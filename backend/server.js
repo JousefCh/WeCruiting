@@ -11,6 +11,7 @@ const app = express();
 // Middleware
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://we-cruiting.vercel.app',
   'http://localhost:5173',
 ].filter(Boolean);
 
@@ -21,6 +22,9 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// Explicitly handle OPTIONS preflight
+app.options('*', cors());
 app.use(express.json({ limit: '15mb' })); // allow base64 photos
 app.use(express.urlencoded({ extended: true }));
 
