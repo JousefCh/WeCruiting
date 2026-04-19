@@ -54,4 +54,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`WeCruiting Backend läuft auf Port ${PORT}`);
+  console.log(`JWT_SECRET gesetzt: ${!!process.env.JWT_SECRET}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`FRONTEND_URL: ${process.env.FRONTEND_URL}`);
 });
