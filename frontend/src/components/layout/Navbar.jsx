@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { UserRound } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
 export default function Navbar() {
@@ -22,7 +23,7 @@ export default function Navbar() {
             <img
               src="/we_logo_white_tran.png"
               alt="WeCruiting"
-              className="h-9 w-auto"
+              className="h-28 w-auto"
             />
           </Link>
 
@@ -52,9 +53,22 @@ export default function Navbar() {
 
           {/* User menu */}
           <div className="flex items-center gap-4">
-            <span className="text-brand-100 text-sm hidden sm:block">
-              {user?.name}
-            </span>
+            <Link
+              to="/"
+              className="text-xs text-brand-100 hover:text-white hidden md:block transition-colors"
+            >
+              Startseite
+            </Link>
+            <Link
+              to="/konto"
+              className={`hidden sm:flex items-center gap-1.5 text-sm transition-colors ${
+                isActive('/konto') ? 'text-white' : 'text-brand-100 hover:text-white'
+              }`}
+              title="Konto & Passwort"
+            >
+              <UserRound size={15} strokeWidth={1.75} />
+              <span className="hidden md:inline">{user?.name}</span>
+            </Link>
             <button
               onClick={handleLogout}
               className="text-sm text-brand-100 hover:text-white border border-brand-200 hover:border-white px-3 py-1.5 rounded-lg transition-colors"

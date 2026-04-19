@@ -7,26 +7,30 @@ function Description({ text }) {
     <div style={{ marginTop: 4 }}>
       {lines.map(({ key, isBullet, content }) =>
         isBullet ? (
-          <div key={key} style={{ display: 'flex', gap: 7, marginBottom: 2 }}>
+          <div key={key} data-cv-line style={{ display: 'flex', gap: 7, marginBottom: 2 }}>
             <span style={{ color: '#9ca3af', flexShrink: 0, marginTop: 1 }}>•</span>
             <span>{content}</span>
           </div>
         ) : (
-          <p key={key} style={{ marginBottom: 3 }}>{content}</p>
+          <p key={key} data-cv-line style={{ marginBottom: 3 }}>{content}</p>
         )
       )}
     </div>
   );
 }
 
-export default function KlassischTemplate({ data, primaryColor, fontFamily, pageCount = 1 }) {
+export default function KlassischTemplate({ data, primaryColor, fontFamily, pageCount = 1, backgroundOnly = false }) {
   const { personalInfo: p = {}, workExperience = [], education = [], skills = [], languages = [], hobbies = [] } = data;
+
+  if (backgroundOnly) {
+    return <div style={{ fontFamily, width: 794, minHeight: 1123 * pageCount, background: '#fff' }} />;
+  }
   const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ') || 'Ihr Name';
 
   const Section = ({ title, children }) => (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: primaryColor }}>{title}</span>
+        <span style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: primaryColor }}>{title}</span>
       </div>
       <div style={{ borderBottom: `2px solid ${primaryColor}`, marginBottom: 10 }} />
       {children}
@@ -34,15 +38,15 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
   );
 
   return (
-    <div style={{ fontFamily, width: 794, minHeight: 1123 * pageCount, background: '#fff', padding: '48px 52px', fontSize: 12, color: '#1a1a2e', position: 'relative' }}>
+    <div style={{ fontFamily, width: 794, minHeight: 1123 * pageCount, background: '#fff', padding: '48px 52px', fontSize: 16, color: '#1a1a2e', position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
-          <div style={{ fontSize: calcNameFontSize(fullName, 32), fontWeight: 700, color: '#1a1a2e', letterSpacing: -0.5, wordBreak: 'break-word' }}>{fullName}</div>
+          <div style={{ fontSize: calcNameFontSize(fullName, 44), fontWeight: 700, color: '#1a1a2e', letterSpacing: -0.5, wordBreak: 'break-word' }}>{fullName}</div>
           {workExperience[0]?.position && (
-            <div style={{ fontSize: 14, color: primaryColor, fontWeight: 500, marginTop: 5 }}>{workExperience[0].position}</div>
+            <div style={{ fontSize: 20, color: primaryColor, fontWeight: 500, marginTop: 5 }}>{workExperience[0].position}</div>
           )}
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 10, lineHeight: 1.9 }}>
+          <div style={{ fontSize: 15, color: '#6b7280', marginTop: 10, lineHeight: 1.9 }}>
             {p.email && <span>{p.email}{p.phone ? '  ·  ' : ''}</span>}
             {p.phone && <span>{p.phone}</span>}
             {(p.city || p.address) && <><br />{[p.address, p.postalCode, p.city].filter(Boolean).join(', ')}</>}
@@ -57,7 +61,7 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
 
       {p.summary && (
         <Section title="Profil">
-          <p data-cv-item="profile" style={{ fontSize: 12, lineHeight: 1.7, color: '#374151' }}>{p.summary}</p>
+          <p data-cv-item="profile" style={{ fontSize: 16, lineHeight: 1.7, color: '#374151' }}>{p.summary}</p>
         </Section>
       )}
 
@@ -65,14 +69,15 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
         <Section title="Berufserfahrung">
           {workExperience.map(job => (
             <div key={job.id} data-cv-item="work" style={{ display: 'flex', marginBottom: 13 }}>
-              <div style={{ width: 135, minWidth: 135, fontSize: 11, color: '#6b7280', paddingTop: 1, lineHeight: 1.5 }}>
+              <div style={{ width: 135, minWidth: 135, fontSize: 15, color: '#6b7280', paddingTop: 1, lineHeight: 1.5 }}>
                 {job.startDate}<br />– {job.current ? 'heute' : job.endDate}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{job.position}</div>
-                <div style={{ color: primaryColor, fontSize: 12, marginBottom: 3 }}>{job.company}</div>
+                <div style={{ fontWeight: 600, fontSize: 18 }}>{job.position}</div>
+                {job.berufsbezeichnung && <div style={{ fontSize: 15, color: '#6b7280', fontStyle: 'italic' }}>{job.berufsbezeichnung}</div>}
+                <div style={{ color: primaryColor, fontSize: 16, marginBottom: 3 }}>{job.company}</div>
                 {job.description && (
-                  <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.65 }}>
+                  <div style={{ fontSize: 15, color: '#4b5563', lineHeight: 1.65 }}>
                     <Description text={job.description} />
                   </div>
                 )}
@@ -86,13 +91,13 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
         <Section title="Ausbildung">
           {education.map(edu => (
             <div key={edu.id} data-cv-item="edu" style={{ display: 'flex', marginBottom: 12 }}>
-              <div style={{ width: 135, minWidth: 135, fontSize: 11, color: '#6b7280', paddingTop: 1, lineHeight: 1.5 }}>
+              <div style={{ width: 135, minWidth: 135, fontSize: 15, color: '#6b7280', paddingTop: 1, lineHeight: 1.5 }}>
                 {edu.startDate}<br />– {edu.current ? 'heute' : edu.endDate}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{edu.degree}{edu.field ? ` – ${edu.field}` : ''}</div>
-                <div style={{ color: primaryColor, fontSize: 12, marginBottom: 2 }}>{edu.institution}</div>
-                {edu.grade && <div style={{ fontSize: 11, color: '#6b7280' }}>Note: {edu.grade}</div>}
+                <div style={{ fontWeight: 600, fontSize: 18 }}>{edu.degree}{edu.field ? ` – ${edu.field}` : ''}</div>
+                <div style={{ color: primaryColor, fontSize: 16, marginBottom: 2 }}>{edu.institution}</div>
+                {edu.grade && <div style={{ fontSize: 15, color: '#6b7280' }}>Note: {edu.grade}</div>}
               </div>
             </div>
           ))}
@@ -106,7 +111,7 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
               <Section title="Kenntnisse">
                 {skills.map(s => (
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ flex: 1, fontSize: 11 }}>{s.name}</span>
+                    <span style={{ flex: 1, fontSize: 15 }}>{s.name}</span>
                     <div style={{ display: 'flex', gap: 3 }}>
                       {[1,2,3,4,5].map(i => (
                         <div key={i} style={{ width: 11, height: 11, borderRadius: '50%', background: i <= s.level ? primaryColor : '#e5e7eb' }} />
@@ -121,7 +126,7 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
             <div style={{ flex: 1 }}>
               <Section title="Sprachkenntnisse">
                 {languages.map(l => (
-                  <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11 }}>
+                  <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 15 }}>
                     <span style={{ fontWeight: 600 }}>{l.language}</span>
                     <span style={{ color: '#6b7280' }}>{l.level}</span>
                   </div>
@@ -134,9 +139,12 @@ export default function KlassischTemplate({ data, primaryColor, fontFamily, page
 
       {hobbies.length > 0 && (
         <Section title="Hobbys & Interessen">
-          <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.8 }}>{hobbies.join('  ·  ')}</div>
+          <div style={{ fontSize: 15, color: '#4b5563', lineHeight: 1.8 }}>{hobbies.join('  ·  ')}</div>
         </Section>
       )}
+      <div style={{ position: 'absolute', bottom: 14, left: 0, right: 0, textAlign: 'center', fontSize: 9, color: 'rgba(0,0,0,0.2)', letterSpacing: '0.08em', pointerEvents: 'none' }}>
+        Made with WeCruiting CV Builder
+      </div>
     </div>
   );
 }

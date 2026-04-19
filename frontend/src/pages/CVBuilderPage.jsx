@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useCVStore from '../store/cvStore';
 import WizardStepper from '../components/wizard/WizardStepper';
+import Step0LinkedIn from '../components/wizard/Step0LinkedIn';
 import Step1Template from '../components/wizard/Step1Template';
 import Step2Editor from '../components/wizard/Step2Editor';
 import Step3Download from '../components/wizard/Step3Download';
@@ -9,10 +10,23 @@ import Step3Download from '../components/wizard/Step3Download';
 export default function CVBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { initNewCV, loadCV, saveCV, setStep, wizardStep, currentCV, isDirty, isSaving, lastSaved, setTitle } = useCVStore();
+  const {
+    initNewCV, loadCV, saveCV, setStep,
+    wizardStep, currentCV, isDirty, isSaving, lastSaved,
+    setTitle, importLinkedInData,
+  } = useCVStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Show the LinkedIn import pre-step only for brand-new CVs (no :id in URL)
+  const [showLinkedIn, setShowLinkedIn] = useState(!id);
   const autoSaveTimer = useRef(null);
+  // Refs so the unmount-cleanup always has the latest values without deps
+  const isDirtyRef = useRef(isDirty);
+  const saveCVRef = useRef(saveCV);
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+    saveCVRef.current = saveCV;
+  });
 
   // Load or init CV
   useEffect(() => {
@@ -32,15 +46,39 @@ export default function CVBuilderPage() {
     init();
   }, [id]);
 
-  // Auto-save when dirty and CV has been saved at least once
+  // Auto-save 2 s after the last change (new CVs get created, existing ones updated)
   useEffect(() => {
-    if (!isDirty || !currentCV.id) return;
+    if (!isDirty) return;
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      saveCV().catch(() => {});
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        const savedId = await saveCV();
+        // New CV: update the URL so refresh / back-button loads the right record
+        if (!id && savedId) {
+          navigate(`/lebenslauf/${savedId}`, { replace: true });
+        }
+      } catch {}
     }, 2000);
     return () => clearTimeout(autoSaveTimer.current);
   }, [isDirty, currentCV]);
+
+  // Save immediately when the user navigates away (SPA navigation unmounts this page)
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        saveCVRef.current().catch(() => {});
+      }
+    };
+  }, []);
+
+  const handleLinkedInImport = (data) => {
+    importLinkedInData(data);
+    setShowLinkedIn(false);
+  };
+
+  const handleLinkedInSkip = () => {
+    setShowLinkedIn(false);
+  };
 
   const handleNextFromStep1 = () => setStep(2);
 
@@ -76,6 +114,19 @@ export default function CVBuilderPage() {
     );
   }
 
+  // ── LinkedIn import pre-step (new CVs only) ─────────────────────────────
+  if (showLinkedIn) {
+    return (
+      <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
+        <Step0LinkedIn
+          onImport={handleLinkedInImport}
+          onSkip={handleLinkedInSkip}
+        />
+      </div>
+    );
+  }
+
+  // ── Normal 3-step wizard ─────────────────────────────────────────────────
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
       {/* Top bar with title + save status */}

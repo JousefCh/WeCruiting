@@ -97,6 +97,16 @@ export default function RegisterPage() {
               Anmelden
             </Link>
           </p>
+          <p className="mt-3 text-center text-xs text-gray-400">
+            Mit der Registrierung stimmen Sie unseren{' '}
+            <Link to="/agb" className="hover:underline">AGB</Link>{' '}
+            und der{' '}
+            <Link to="/datenschutz" className="hover:underline">Datenschutzerklärung</Link>{' '}
+            zu.
+          </p>
+          <p className="mt-1 text-center text-xs text-gray-400">
+            <Link to="/impressum" className="hover:underline">Impressum</Link>
+          </p>
         </div>
       </div>
     </div>

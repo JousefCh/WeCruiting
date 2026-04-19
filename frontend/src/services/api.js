@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
 
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('wecruiting_token');
@@ -11,7 +11,9 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    // Don't redirect for /auth/me — authStore handles that gracefully.
+    // Only redirect when a protected app request returns 401 (session expired mid-use).
+    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/me')) {
       localStorage.removeItem('wecruiting_token');
       window.location.href = '/login';
     }

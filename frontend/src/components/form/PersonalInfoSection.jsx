@@ -41,8 +41,6 @@ export default function PersonalInfoSection() {
         <Field label="Geburtsort" field="birthPlace" placeholder="Berlin" value={personalInfo.birthPlace} onChange={updatePersonalInfo} />
       </div>
 
-      <Field label="Nationalität" field="nationality" placeholder="Deutsch" value={personalInfo.nationality} onChange={updatePersonalInfo} />
-
       <div className="grid grid-cols-2 gap-3">
         <Field label="E-Mail" field="email" type="email" placeholder="max@beispiel.de" value={personalInfo.email} onChange={updatePersonalInfo} />
         <Field label="Telefon" field="phone" placeholder="+49 123 4567890" value={personalInfo.phone} onChange={updatePersonalInfo} />
@@ -58,7 +56,6 @@ export default function PersonalInfoSection() {
       </div>
 
       <Field label="LinkedIn-Profil" field="linkedin" placeholder="linkedin.com/in/..." value={personalInfo.linkedin} onChange={updatePersonalInfo} />
-      <Field label="Website" field="website" placeholder="www.beispiel.de" value={personalInfo.website} onChange={updatePersonalInfo} />
 
       <div>
         <label className="label">Profil / Kurzvorstellung</label>

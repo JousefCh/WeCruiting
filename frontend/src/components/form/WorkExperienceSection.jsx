@@ -1,6 +1,6 @@
 import useCVStore from '../../store/cvStore';
 
-const EMPTY_JOB = { company: '', position: '', startDate: '', endDate: '', current: false, description: '' };
+const EMPTY_JOB = { company: '', position: '', berufsbezeichnung: '', startDate: '', endDate: '', current: false, description: '' };
 
 function BulletTextarea({ value, onChange }) {
   const handleKeyDown = (e) => {
@@ -108,13 +108,18 @@ export default function WorkExperienceSection() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Position / Berufsbezeichnung</label>
-              <input className="input-field" placeholder="Softwareentwickler" value={job.position} onChange={e => update(job.id, 'position', e.target.value)} />
+              <label className="label">Position</label>
+              <input className="input-field" placeholder="Bauleiter" value={job.position} onChange={e => update(job.id, 'position', e.target.value)} />
             </div>
             <div>
-              <label className="label">Unternehmen</label>
-              <input className="input-field" placeholder="Muster GmbH" value={job.company} onChange={e => update(job.id, 'company', e.target.value)} />
+              <label className="label">Berufsbezeichnung</label>
+              <input className="input-field" placeholder="Diplom-Ingenieur" value={job.berufsbezeichnung || ''} onChange={e => update(job.id, 'berufsbezeichnung', e.target.value)} />
             </div>
+          </div>
+
+          <div>
+            <label className="label">Unternehmen</label>
+            <input className="input-field" placeholder="Muster GmbH" value={job.company} onChange={e => update(job.id, 'company', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

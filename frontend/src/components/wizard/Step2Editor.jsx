@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UserRound, Briefcase, GraduationCap, Lightbulb, Globe, Smile } from 'lucide-react';
 import useCVStore from '../../store/cvStore';
 import CVPreviewPanel from '../preview/CVPreviewPanel';
 import PersonalInfoSection from '../form/PersonalInfoSection';
@@ -9,12 +10,12 @@ import LanguagesSection from '../form/LanguagesSection';
 import HobbiesSection from '../form/HobbiesSection';
 
 const SECTIONS = [
-  { id: 'personal', label: 'Persönliche Daten', icon: '👤', Component: PersonalInfoSection },
-  { id: 'work', label: 'Berufserfahrung', icon: '💼', Component: WorkExperienceSection },
-  { id: 'education', label: 'Ausbildung', icon: '🎓', Component: EducationSection },
-  { id: 'skills', label: 'Kenntnisse', icon: '⭐', Component: SkillsSection },
-  { id: 'languages', label: 'Sprachen', icon: '🌍', Component: LanguagesSection },
-  { id: 'hobbies', label: 'Hobbys & Interessen', icon: '🎯', Component: HobbiesSection },
+  { id: 'personal',   label: 'Persönliche Daten',   Icon: UserRound,      Component: PersonalInfoSection },
+  { id: 'work',       label: 'Berufserfahrung',      Icon: Briefcase,      Component: WorkExperienceSection },
+  { id: 'education',  label: 'Ausbildung',           Icon: GraduationCap,  Component: EducationSection },
+  { id: 'skills',     label: 'Kenntnisse',           Icon: Lightbulb,      Component: SkillsSection },
+  { id: 'languages',  label: 'Sprachen',             Icon: Globe,          Component: LanguagesSection },
+  { id: 'hobbies',    label: 'Hobbys & Interessen',  Icon: Smile,          Component: HobbiesSection },
 ];
 
 export default function Step2Editor({ onBack, onNext }) {
@@ -30,18 +31,18 @@ export default function Step2Editor({ onBack, onNext }) {
       {/* Section sidebar */}
       <div className="w-48 shrink-0 bg-white border-r border-gray-100 overflow-y-auto">
         <nav className="p-2 space-y-0.5">
-          {SECTIONS.map(sec => (
+          {SECTIONS.map(({ id, label, Icon: SectionIcon }) => (
             <button
-              key={sec.id}
-              onClick={() => setActiveSection(sec.id)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2 ${
-                activeSection === sec.id
+              key={id}
+              onClick={() => setActiveSection(id)}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2.5 ${
+                activeSection === id
                   ? 'bg-brand text-white font-semibold'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
-              <span className="text-base">{sec.icon}</span>
-              <span className="leading-tight">{sec.label}</span>
+              <SectionIcon size={15} strokeWidth={1.75} className="shrink-0" />
+              <span className="leading-tight">{label}</span>
             </button>
           ))}
         </nav>

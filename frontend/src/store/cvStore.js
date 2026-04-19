@@ -125,6 +125,45 @@ const useCVStore = create((set, get) => ({
     isDirty: true,
   })),
 
+  /**
+   * Bulk-import LinkedIn-parsed data into the current CV.
+   * Only overwrites fields that have a non-empty value in importedData.
+   */
+  importLinkedInData: (importedData) => set(s => {
+    const {
+      personalInfo = {},
+      workExperience = [],
+      education = [],
+      skills = [],
+      languages = [],
+      hobbies = [],
+    } = importedData || {};
+
+    // Merge personalInfo: keep existing values when imported field is empty
+    const mergedPersonalInfo = { ...s.currentCV.personalInfo };
+    Object.keys(personalInfo).forEach(key => {
+      if (personalInfo[key] !== '' && personalInfo[key] != null) {
+        mergedPersonalInfo[key] = personalInfo[key];
+      }
+    });
+
+    const withIds = (arr) =>
+      Array.isArray(arr) ? arr.map(item => ({ ...item, id: newId() })) : [];
+
+    return {
+      currentCV: {
+        ...s.currentCV,
+        personalInfo: mergedPersonalInfo,
+        workExperience: withIds(workExperience),
+        education: withIds(education),
+        skills: withIds(skills),
+        languages: withIds(languages),
+        hobbies: Array.isArray(hobbies) ? hobbies.filter(h => typeof h === 'string' && h.trim()) : [],
+      },
+      isDirty: true,
+    };
+  }),
+
   setStep: (step) => set({ wizardStep: step }),
 
   saveCV: async () => {

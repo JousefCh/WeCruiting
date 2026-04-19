@@ -78,11 +78,26 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <div className="mt-4 text-center">
+            <Link to="/passwort-vergessen" className="text-sm text-gray-400 hover:text-brand transition-colors">
+              Passwort vergessen?
+            </Link>
+          </div>
+
           <p className="mt-6 text-center text-sm text-gray-500">
             Noch kein Konto?{' '}
             <Link to="/registrieren" className="text-brand font-medium hover:underline">
               Jetzt registrieren
             </Link>
+          </p>
+          <p className="mt-3 text-center text-xs text-gray-400 flex justify-center gap-3">
+            <Link to="/" className="hover:underline">Startseite</Link>
+            <span>&middot;</span>
+            <Link to="/impressum" className="hover:underline">Impressum</Link>
+            <span>&middot;</span>
+            <Link to="/agb" className="hover:underline">AGB</Link>
+            <span>&middot;</span>
+            <Link to="/datenschutz" className="hover:underline">Datenschutz</Link>
           </p>
         </div>
       </div>

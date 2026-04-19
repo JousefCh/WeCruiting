@@ -3,30 +3,41 @@ import jsPDF from 'jspdf';
 
 const A4_HEIGHT_PX = 1123; // 794 × 1123 px at 96 dpi
 
+// Breathing room (px) kept free at the bottom of a page and the top of the
+// next page around every logical break point.
+const PAGE_PADDING = 50;
+// Minimum content height (px, ~44 % of A4) that must sit on a page before
+// we consider breaking BEFORE a cv-item.  Below this threshold the entry
+// nearly fills the whole page already, so we break WITHIN it at bullet level.
+const MIN_PAGE_CONTENT = 500;
+
 /**
  * Finds Y positions (in the element's own unscaled pixel space) where the
  * page can be split without cutting through any [data-cv-item] element.
  *
- * Strategy: for each A4 page boundary, if a cv-item crosses it, move the
- * split point up to just before that item (so the item moves intact to the
- * next page). If an item is taller than a full page, we're forced to cut
- * through it (unavoidable fallback).
+ * IMPORTANT: uses getBoundingClientRect() for position measurement because
+ * the export element is position:fixed, which causes offsetParent to return
+ * null for all descendants — making offsetTop traversal unreliable.
+ *
+ * Two levels of granularity:
+ *  1. Prefer breaking between [data-cv-item] entries (whole job / edu blocks).
+ *  2. When an entry spans the full page, break between [data-cv-line] elements
+ *     (individual bullet points / paragraphs) instead of cutting mid-line.
  */
 function computeLogicalBreaks(element, pageHeight) {
   const totalHeight = element.scrollHeight;
   if (totalHeight <= pageHeight) return [];
 
-  // Collect all cv-item bounding boxes (offsetTop relative to the element root)
-  const items = Array.from(element.querySelectorAll('[data-cv-item]')).map(el => {
-    // Walk up to find cumulative offsetTop relative to `element`
-    let top = 0;
-    let node = el;
-    while (node && node !== element) {
-      top += node.offsetTop;
-      node = node.offsetParent;
-    }
-    return { top, bottom: top + el.offsetHeight };
-  });
+  const containerTop = element.getBoundingClientRect().top;
+  const measure = (selector) =>
+    Array.from(element.querySelectorAll(selector)).map(el => {
+      const rect = el.getBoundingClientRect();
+      const top = rect.top - containerTop;
+      return { top, bottom: top + rect.height };
+    });
+
+  const items = measure('[data-cv-item]');
+  const lines = measure('[data-cv-line]');
 
   const breaks = [];
   let pageStart = 0;
@@ -35,26 +46,63 @@ function computeLogicalBreaks(element, pageHeight) {
     const pageEnd = pageStart + pageHeight;
     if (pageEnd >= totalHeight) break;
 
-    // Find the first item that crosses this page boundary
     const crossingItem = items.find(
       item => item.top < pageEnd && item.bottom > pageEnd
     );
 
     let splitAt;
+
     if (!crossingItem) {
-      // No item crosses — split at the raw boundary
-      splitAt = pageEnd;
-    } else if (crossingItem.top <= pageStart) {
-      // Item started on (or before) previous page start — it's taller than a page,
-      // forced to cut at the raw boundary
+      // No entry crosses — split at raw boundary (natural whitespace follows)
       splitAt = pageEnd;
     } else {
-      // Split just before the crossing item
-      splitAt = crossingItem.top;
+      // Find the last item that ends completely before the crossing item starts.
+      // Breaking there ensures no item is ever split across pages.
+      const prevItems = items.filter(
+        item => item.bottom <= crossingItem.top && item.bottom > pageStart && item.bottom <= pageEnd - PAGE_PADDING
+      );
+      const lastPrev = prevItems.length > 0
+        ? prevItems.reduce((a, b) => (a.bottom > b.bottom ? a : b))
+        : null;
+
+      // Line-level break: find the bullet/line crossing the page boundary.
+      const crossingLine = lines.find(
+        line => line.top >= pageStart && line.top < pageEnd && line.bottom > pageEnd
+      );
+      const lineBreakAt = crossingLine && crossingLine.top - PAGE_PADDING > pageStart
+        ? crossingLine.top - PAGE_PADDING
+        : null;
+
+      if (lastPrev && lastPrev.bottom >= pageStart + MIN_PAGE_CONTENT) {
+        // Item-level break available. Prefer line-level whenever it yields
+        // more than PAGE_PADDING of extra content to avoid large empty gaps.
+        if (lineBreakAt && lineBreakAt > lastPrev.bottom + PAGE_PADDING) {
+          splitAt = lineBreakAt;
+        } else {
+          splitAt = lastPrev.bottom;
+        }
+      } else if (lineBreakAt) {
+        splitAt = lineBreakAt;
+      } else {
+        splitAt = pageEnd;
+      }
     }
 
     breaks.push(splitAt);
     pageStart = splitAt;
+  }
+
+  // Orphan prevention (post-processing): if the last page segment is tiny,
+  // absorb it into the previous page — but ONLY when the merged content fits
+  // within one A4 page height (otherwise we'd clip content).
+  if (breaks.length >= 1) {
+    const lastBreak = breaks[breaks.length - 1];
+    const prevBreak = breaks.length >= 2 ? breaks[breaks.length - 2] : 0;
+    const orphanSize = totalHeight - lastBreak;
+    const mergedSize  = totalHeight - prevBreak;
+    if (orphanSize < PAGE_PADDING * 4 && mergedSize <= pageHeight) {
+      breaks.pop();
+    }
   }
 
   return breaks;
