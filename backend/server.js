@@ -32,6 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/cvs', require('./routes/cvs'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/linkedin', require('./routes/linkedin'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
