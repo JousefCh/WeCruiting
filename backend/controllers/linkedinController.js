@@ -155,8 +155,8 @@ ${profileText.slice(0, 10000)}`;
     const jsonStr = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     parsed = JSON.parse(jsonStr);
   } catch (aiErr) {
-    console.error('[LinkedIn] AI/parse error:', aiErr.message);
-    return res.status(500).json({ error: 'Die Profildaten konnten nicht verarbeitet werden. Bitte erneut versuchen.' });
+    console.error('[LinkedIn] AI/parse error:', aiErr.message, aiErr.stack);
+    return res.status(500).json({ error: `AI Fehler: ${aiErr.message}` });
   }
 
   // 4. Sanitise and return
