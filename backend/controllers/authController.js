@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const db = require('../database/db');
+const pool = require('../database/db');
 
 function createMailTransport() {
   return nodemailer.createTransport({
@@ -24,45 +24,61 @@ function signToken(user) {
   );
 }
 
-exports.register = (req, res) => {
-  const { email, password, name } = req.body;
+exports.register = async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
 
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: 'Bitte alle Felder ausfüllen.' });
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Bitte alle Felder ausfüllen.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Das Passwort muss mindestens 6 Zeichen lang sein.' });
+    }
+
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM users WHERE email = $1', [email.toLowerCase()]
+    );
+    if (existing[0]) {
+      return res.status(409).json({ error: 'Diese E-Mail-Adresse ist bereits registriert.' });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    const { rows } = await pool.query(
+      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name',
+      [email.toLowerCase(), hash, name.trim()]
+    );
+    const user = rows[0];
+    const token = signToken(user);
+
+    res.status(201).json({ token, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ein interner Fehler ist aufgetreten.' });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Das Passwort muss mindestens 6 Zeichen lang sein.' });
-  }
-
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-  if (existing) {
-    return res.status(409).json({ error: 'Diese E-Mail-Adresse ist bereits registriert.' });
-  }
-
-  const hash = bcrypt.hashSync(password, 10);
-  const stmt = db.prepare('INSERT INTO users (email, password, name) VALUES (?, ?, ?)');
-  const result = stmt.run(email.toLowerCase(), hash, name.trim());
-
-  const user = { id: Number(result.lastInsertRowid), email: email.toLowerCase(), name: name.trim() };
-  const token = signToken(user);
-
-  res.status(201).json({ token, user });
 };
 
-exports.login = (req, res) => {
-  const { email, password } = req.body;
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Bitte E-Mail und Passwort eingeben.' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Bitte E-Mail und Passwort eingeben.' });
+    }
+
+    const { rows } = await pool.query(
+      'SELECT * FROM users WHERE email = $1', [email.toLowerCase()]
+    );
+    const user = rows[0];
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ error: 'Ungültige E-Mail-Adresse oder falsches Passwort.' });
+    }
+
+    const token = signToken(user);
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ein interner Fehler ist aufgetreten.' });
   }
-
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ error: 'Ungültige E-Mail-Adresse oder falsches Passwort.' });
-  }
-
-  const token = signToken(user);
-  res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
 };
 
 exports.me = (req, res) => {
@@ -73,17 +89,20 @@ exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Bitte E-Mail-Adresse eingeben.' });
 
-  // Always return success to prevent user enumeration
-  const user = db.prepare('SELECT id, name FROM users WHERE email = ?').get(email.toLowerCase());
+  const { rows } = await pool.query(
+    'SELECT id, name FROM users WHERE email = $1', [email.toLowerCase()]
+  );
+  const user = rows[0];
   if (!user) return res.json({ message: 'ok' });
 
-  // Invalidate old tokens for this user
-  db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+  await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [user.id]);
 
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
-  db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)')
-    .run(user.id, token, expiresAt);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+    [user.id, token, expiresAt]
+  );
 
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/passwort-neu-setzen?token=${token}`;
 
@@ -115,63 +134,67 @@ exports.forgotPassword = async (req, res) => {
               Dieser Link ist 1 Stunde gültig. Falls Sie keine Anfrage gestellt haben,
               können Sie diese E-Mail ignorieren.
             </p>
-            <hr style="border:none;border-top:1px solid #f3f4f6;margin:20px 0" />
-            <p style="color:#9ca3af;font-size:12px">
-              WeCruiting Consulting GmbH · Ruhrstraße 4a, 63452 Hanau
-            </p>
           </div>
         </div>
       `,
     });
   } catch (err) {
     console.error('E-Mail konnte nicht gesendet werden:', err.message);
-    return res.status(500).json({ error: 'E-Mail konnte nicht gesendet werden. Bitte später erneut versuchen.' });
+    return res.status(500).json({ error: 'E-Mail konnte nicht gesendet werden.' });
   }
 
   res.json({ message: 'ok' });
 };
 
-exports.resetPassword = (req, res) => {
-  const { token, newPassword } = req.body;
-  if (!token || !newPassword) return res.status(400).json({ error: 'Ungültige Anfrage.' });
-  if (newPassword.length < 6) return res.status(400).json({ error: 'Das Passwort muss mindestens 6 Zeichen lang sein.' });
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Ungültige Anfrage.' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Das Passwort muss mindestens 6 Zeichen lang sein.' });
 
-  const record = db.prepare(
-    'SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0'
-  ).get(token);
+    const { rows } = await pool.query(
+      'SELECT * FROM password_reset_tokens WHERE token = $1 AND used = 0', [token]
+    );
+    const record = rows[0];
+    if (!record) return res.status(400).json({ error: 'Dieser Link ist ungültig.' });
+    if (new Date(record.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Dieser Link ist abgelaufen.' });
+    }
 
-  if (!record) return res.status(400).json({ error: 'Dieser Link ist ungültig.' });
-  if (new Date(record.expires_at) < new Date()) {
-    return res.status(400).json({ error: 'Dieser Link ist abgelaufen. Bitte fordern Sie einen neuen an.' });
+    const hash = bcrypt.hashSync(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, record.user_id]);
+    await pool.query('UPDATE password_reset_tokens SET used = 1 WHERE id = $1', [record.id]);
+
+    res.json({ message: 'Passwort erfolgreich geändert.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ein interner Fehler ist aufgetreten.' });
   }
-
-  const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare("UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?")
-    .run(hash, record.user_id);
-  db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?')
-    .run(record.id);
-
-  res.json({ message: 'Passwort erfolgreich geändert.' });
 };
 
-exports.changePassword = (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
 
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Bitte alle Felder ausfüllen.' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Bitte alle Felder ausfüllen.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Das neue Passwort muss mindestens 6 Zeichen lang sein.' });
+    }
+
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = rows[0];
+    if (!user || !bcrypt.compareSync(currentPassword, user.password)) {
+      return res.status(401).json({ error: 'Das aktuelle Passwort ist falsch.' });
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [newHash, req.user.id]);
+
+    res.json({ message: 'Passwort erfolgreich geändert.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ein interner Fehler ist aufgetreten.' });
   }
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'Das neue Passwort muss mindestens 6 Zeichen lang sein.' });
-  }
-
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  if (!user || !bcrypt.compareSync(currentPassword, user.password)) {
-    return res.status(401).json({ error: 'Das aktuelle Passwort ist falsch.' });
-  }
-
-  const newHash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password = ?, updated_at = datetime(\'now\') WHERE id = ?')
-    .run(newHash, req.user.id);
-
-  res.json({ message: 'Passwort erfolgreich geändert.' });
 };
