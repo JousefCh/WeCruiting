@@ -1,6 +1,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const rawKey = (process.env.ANTHROPIC_API_KEY || '').replace(/^[\s\t=]+/, '').trim();
+const client = new Anthropic({ apiKey: rawKey });
 
 exports.generateCoverLetter = async (req, res) => {
   const { cvData, jobTitle, company, jobDescription } = req.body;

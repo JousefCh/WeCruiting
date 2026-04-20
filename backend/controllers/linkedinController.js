@@ -2,7 +2,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const rawKey = (process.env.ANTHROPIC_API_KEY || '').replace(/^[\s\t=]+/, '').trim();
+const client = new Anthropic({ apiKey: rawKey });
 
 // ── multer setup ─────────────────────────────────────────────────────────────
 
