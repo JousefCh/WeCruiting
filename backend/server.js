@@ -58,4 +58,6 @@ app.listen(PORT, () => {
   console.log(`JWT_SECRET gesetzt: ${!!process.env.JWT_SECRET}`);
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
   console.log(`FRONTEND_URL: ${process.env.FRONTEND_URL}`);
+  const key = process.env.ANTHROPIC_API_KEY || '';
+  console.log(`ANTHROPIC_API_KEY: ${key.slice(0, 16)}... (Länge: ${key.length})`);
 });
