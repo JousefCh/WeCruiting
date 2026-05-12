@@ -167,7 +167,8 @@ function ImportCVModal({ onClose, onImport }) {
         // Already imported → just close and let parent reload
         onImport(null);
       } else {
-        alert(serverMsg || 'Fehler beim Importieren. Bitte Backend prüfen.');
+        const detail = serverMsg || (status ? `HTTP ${status}` : 'Keine Serverantwort – Backend prüfen');
+        alert(`Fehler beim Importieren: ${detail}`);
       }
     } finally {
       setImporting(null);
