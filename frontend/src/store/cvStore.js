@@ -70,13 +70,18 @@ const useCVStore = create((set, get) => ({
     isDirty: true,
   })),
 
-  updatePersonalInfo: (field, value) => set(s => ({
-    currentCV: {
-      ...s.currentCV,
-      personalInfo: { ...s.currentCV.personalInfo, [field]: value },
-    },
-    isDirty: true,
-  })),
+  updatePersonalInfo: (field, value) => set(s => {
+    const newPersonalInfo = { ...s.currentCV.personalInfo, [field]: value };
+    const nameTitle = [newPersonalInfo.firstName, newPersonalInfo.lastName].filter(Boolean).join(' ');
+    return {
+      currentCV: {
+        ...s.currentCV,
+        personalInfo: newPersonalInfo,
+        title: nameTitle || s.currentCV.title,
+      },
+      isDirty: true,
+    };
+  }),
 
   updateDesign: (field, value) => set(s => ({
     currentCV: {
@@ -150,10 +155,12 @@ const useCVStore = create((set, get) => ({
     const withIds = (arr) =>
       Array.isArray(arr) ? arr.map(item => ({ ...item, id: newId() })) : [];
 
+    const nameTitle = [mergedPersonalInfo.firstName, mergedPersonalInfo.lastName].filter(Boolean).join(' ');
     return {
       currentCV: {
         ...s.currentCV,
         personalInfo: mergedPersonalInfo,
+        title: nameTitle || s.currentCV.title,
         workExperience: withIds(workExperience),
         education: withIds(education),
         skills: withIds(skills),
@@ -178,7 +185,7 @@ const useCVStore = create((set, get) => ({
         saved = await cvService.createCV(title, cvData);
       }
       set(s => ({
-        currentCV: { ...s.currentCV, id: saved.id },
+        currentCV: { ...s.currentCV, id: saved.id, title: saved.title || s.currentCV.title },
         isDirty: false,
         isSaving: false,
         lastSaved: new Date(),

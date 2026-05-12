@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { UserRound, BarChart2 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
 export default function Navbar() {
@@ -48,6 +48,15 @@ export default function Navbar() {
               }`}
             >
               + Neuer Lebenslauf
+            </Link>
+            <Link
+              to="/crm"
+              className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                isActive('/crm') ? 'text-white' : 'text-brand-100 hover:text-white'
+              }`}
+            >
+              <BarChart2 size={15} strokeWidth={1.75} />
+              CRM
             </Link>
           </div>
 

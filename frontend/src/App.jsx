@@ -11,6 +11,7 @@ import PasswortNeuSetzenPage from './pages/PasswortNeuSetzenPage';
 import DashboardPage from './pages/DashboardPage';
 import CVBuilderPage from './pages/CVBuilderPage';
 import AccountPage from './pages/AccountPage';
+import CRMPage from './pages/CRMPage';
 import DatenschutzPage from './pages/DatenschutzPage';
 import ImpressumPage from './pages/ImpressumPage';
 import AgbPage from './pages/AgbPage';
@@ -59,6 +60,7 @@ export default function App() {
           <Route element={<Layout><AccountPage /></Layout>} path="/konto" />
           <Route element={<Layout><CVBuilderPage /></Layout>} path="/lebenslauf/neu" />
           <Route element={<Layout><CVBuilderPage /></Layout>} path="/lebenslauf/:id" />
+          <Route element={<Layout><CRMPage /></Layout>} path="/crm" />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

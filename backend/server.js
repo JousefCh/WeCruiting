@@ -28,11 +28,20 @@ app.options('*', cors());
 app.use(express.json({ limit: '15mb' })); // allow base64 photos
 app.use(express.urlencoded({ extended: true }));
 
+// Temp PDF files for Instantly attachments
+const fs = require('fs');
+const tempDir = path.join(__dirname, 'public/temp');
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+app.use('/temp', express.static(tempDir));
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/cvs', require('./routes/cvs'));
+app.use('/api/cvs/:id', require('./routes/close'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/linkedin', require('./routes/linkedin'));
+app.use('/api/placement', require('./routes/placement'));
+app.use('/api/crm', require('./routes/crm'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
