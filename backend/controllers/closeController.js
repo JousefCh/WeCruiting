@@ -435,7 +435,7 @@ PFLICHT-FORMAT für die Tätigkeitsbeschreibung:
 - Fachlich präzise, konkrete deutsche HR-Sprache – keine generischen Phrasen
 - Betone Aspekte, die für dieses Zielunternehmen besonders relevant sind
 - Erfinde NICHTS – nur Umformulierung, Schwerpunktverlagerung und Präzisierung
-- Wenn keine Beschreibung vorhanden: 8 sinnvolle Punkte aus Position und Unternehmen ableiten
+- Wenn keine Beschreibung vorhanden: 6 sinnvolle Punkte aus Position und Unternehmen ableiten
 
 AUFGABE TEIL 2 – Zugeschnittene Vorstellungs-E-Mail:
 Erstelle eine E-Mail die explizit auf dieses Unternehmen eingeht (Branche, Projekte, Bedarf).
@@ -473,10 +473,11 @@ Bei Interesse vereinbare ich sehr gerne ein Gespräch.
 
 Über Ihre Rückmeldung freue ich mich.
 
-Antworte ausschließlich im folgenden JSON-Format (kein Markdown, keine Codeblöcke):
+Antworte ausschließlich im folgenden JSON-Format (kein Markdown, keine Codeblöcke).
+workExperience enthält NUR einen einzigen Eintrag – den für Index ${currentJobIdx}:
 {
   "workExperience": [
-    { "index": 0, "description": "angepasste Beschreibung mit • Aufzählungen" }
+    { "index": ${currentJobIdx}, "description": "angepasste Beschreibung mit 6–10 • Aufzählungen und **fettgedruckten** Schlüsselbegriffen" }
   ],
   "email": {
     "subject": "Betreff",
