@@ -31,7 +31,7 @@ async function apiPost(path, body) {
 
 // Returns array of { id, name, status, ... }
 async function listCampaigns() {
-  const data = await apiGet('/campaign?limit=100');
+  const data = await apiGet('/campaigns?limit=100');
   return Array.isArray(data) ? data : (data.items || data.campaigns || []);
 }
 
@@ -83,7 +83,7 @@ function buildSequences(subject, body, attachmentFiles = []) {
 
 // Create a new campaign with sequences
 async function createCampaign({ name, sequences, dailyLimit = 50 }) {
-  return apiPost('/campaign', {
+  return apiPost('/campaigns', {
     name,
     campaign_schedule: {
       schedules: [{
@@ -109,7 +109,7 @@ async function activateCampaign(campaignId) {
 // Add leads to a campaign
 // leads: [{ email, first_name, last_name, company_name, custom_variables }]
 async function addLeads(campaignId, leads) {
-  return apiPost('/lead/add', {
+  return apiPost('/leads/bulk-add', {
     campaign_id: campaignId,
     leads,
     skip_if_in_workspace: false,

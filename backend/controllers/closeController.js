@@ -166,23 +166,53 @@ exports.generateEmail = async (req, res) => {
     }
 
     const currentYear = new Date().getFullYear();
+
+    // Experience = currentYear minus end of earliest education (avoids double-counting overlapping jobs).
+    // Prefer Ausbildung entries; fall back to any earliest education; fall back to summing job durations.
+    const allEdu = Array.isArray(education) ? education : [];
+    const isAusbildung = e => /ausbildung|azubi|berufsschule|berufsfachschule/i.test(`${e.degree} ${e.field} ${e.institution}`);
+    const sortByStart = arr => [...arr].sort((a, b) =>
+      (parseInt(a.startDate) || parseInt(a.endDate) || 9999) - (parseInt(b.startDate) || parseInt(b.endDate) || 9999)
+    );
+    const ausbildungen = sortByStart(allEdu.filter(isAusbildung));
+    const firstEdu = ausbildungen[0] || sortByStart(allEdu)[0];
+
     let totalYears = 0;
-    workExperience.forEach(job => {
-      const start = parseInt(job.startDate);
-      const end = job.current ? currentYear : parseInt(job.endDate);
-      if (!isNaN(start) && !isNaN(end) && end >= start) totalYears += end - start;
-    });
+    if (firstEdu && !firstEdu.current) {
+      const eduEnd = parseInt(firstEdu.endDate);
+      if (!isNaN(eduEnd) && eduEnd > 1950 && eduEnd <= currentYear) {
+        totalYears = currentYear - eduEnd;
+      }
+    }
+    // Fallback: sum job durations (no usable education data)
+    if (totalYears <= 0) {
+      workExperience.forEach(job => {
+        const start = parseInt(job.startDate);
+        const end = job.current ? currentYear : parseInt(job.endDate);
+        if (!isNaN(start) && !isNaN(end) && end >= start) totalYears += end - start;
+      });
+    }
+
+    // Description of the most recent/current job — carried verbatim into email
+    const mainJobIdx = (() => {
+      const ci = workExperience.findIndex(j => j.current);
+      return ci !== -1 ? ci : 0;
+    })();
+    const mainJobDescription = (workExperience[mainJobIdx]?.description || '').trim();
+    // Convert **bold** → <b>bold</b>, strip blank lines, limit to 7 bullets for email
+    const mainJobDescriptionEmail = mainJobDescription
+      ? mainJobDescription.split('\n').filter(l => l.trim()).slice(0, 7).map(l => l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('\n')
+      : '';
 
     const cvSummary = anon
       ? `
 Standort: ${standort}
 Berufserfahrung gesamt: ca. ${totalYears} Jahre
-Stellen (NUR Positionsbezeichnungen, KEINE Firmennamen):
-${workExperience.map(j => `- ${[j.position, j.berufsbezeichnung].filter(Boolean).join(' / ')} (${j.startDate}–${j.current ? 'heute' : j.endDate})`).join('\n')}
+Stellen (KEINE Firmennamen verwenden – nur generische Unternehmenstypen wie "einem Bauunternehmen", "einem Planungsbüro"):
+${workExperience.map(j => `- ${[j.position, j.berufsbezeichnung].filter(Boolean).join(' / ')} (${j.startDate}–${j.current ? 'heute' : j.endDate})${j.description ? '\n  ' + j.description : ''}`).join('\n')}
 Ausbildung:
 ${education.map(e => `- ${[e.degree, e.field].filter(Boolean).join(' ')} – ${e.institution}`).join('\n')}
 Kenntnisse: ${skills.map(s => s.name).join(', ')}
-Sprachen: ${languages.map(l => `${l.language} (${l.level})`).join(', ')}
 Gehaltsvorstellung: ${gehaltsvorstellung}
 Kündigungsfrist: ${kuendigungsfrist}
       `.trim()
@@ -195,7 +225,6 @@ ${workExperience.map(j => `- ${[j.position, j.berufsbezeichnung].filter(Boolean)
 Ausbildung:
 ${education.map(e => `- ${[e.degree, e.field].filter(Boolean).join(' ')} – ${e.institution}${e.description ? ' | ' + e.description : ''}`).join('\n')}
 Kenntnisse: ${skills.map(s => s.name).join(', ')}
-Sprachen: ${languages.map(l => `${l.language} (${l.level})`).join(', ')}
 Gehaltsvorstellung: ${gehaltsvorstellung}
 Kündigungsfrist: ${kuendigungsfrist}
       `.trim();
@@ -217,11 +246,11 @@ Kandidatendaten:
 ${cvSummary}
 
 Struktur der E-Mail (exakt einhalten):
-BETREFF: Top Profil: [Hauptposition mit Spezialisierung] Standort ${cityRegion || standort}
+BETREFF: Top Profil: [Hauptposition Spezialisierung] Standort ${cityRegion || standort}
 ---
 Sehr geehrte Damen und Herren,
 
-anbei finden Sie das Profil eines sehr interessanten <b>[Beschreibung der Position mit Spezialisierung und Standort]</b>
+anbei finden Sie das Profil eines top <b>[Position und Spezialisierung, z.B. "Bauleiter Hochbau"]</b> an den Standorten <b>[Standort/Region, z.B. "München / Augsburg"]</b>
 
 <b>Profildaten:</b>
 
@@ -231,38 +260,33 @@ anbei finden Sie das Profil eines sehr interessanten <b>[Beschreibung der Positi
 • [Abschlusstyp + Fachrichtung, Format: "Bachelor Bauingenieurwesen" oder "Master Maschinenbau" – KEIN "Abschluss im/in"]
 • [weitere Abschlüsse im gleichen Format, falls vorhanden]
 
-<b>Projekte:</b> [Beschreibung relevanter Projekte/Branchen – NUR generische Unternehmenstypen, KEINE Firmennamen]
+<b>Projekte:</b> [Ein einziger Satz im Format: "Schwerpunkt [Bereich], [weiterer Bereich] ([spezifische Projekttypen]); Projektvolumen bis X Mio.€" – falls Projektvolumen unbekannt: "Projektvolumen bis ___ Mio.€". NUR generische Unternehmenstypen, KEINE Firmennamen.]
 
 <b>Hauptaufgaben:</b>
 
-• [Hauptaufgabe 1 aus Berufserfahrung]
-• [weitere Aufgaben...]
+[[HAUPTAUFGABEN]]
 
 <b>EDV:</b> [Kenntnisse/Tools]
-
 <b>Standort:</b> [Stadt/Region]
-
 <b>Gehaltsvorstellung: ${gehaltsvorstellung}</b>
-
 <b>Kündigungsfrist: ${kuendigungsfrist}</b>
 
 Könnte der Kandidat für Sie von Interesse sein?
 Bei Interesse vereinbare ich sehr gerne ein Gespräch.
-
 Über Ihre Rückmeldung freue ich mich.
 
-Wichtig: Gib nur BETREFF-Zeile und E-Mail-Text aus, nichts anderes. Trenne sie mit "---". Behalte alle <b>-Tags exakt wie in der Struktur vorgegeben. Kein Markdown, keine Sternchen.`
+Wichtig: Gib nur BETREFF-Zeile und E-Mail-Text aus, nichts anderes. Trenne sie mit "---". Den Platzhalter [[HAUPTAUFGABEN]] exakt so im Text stehen lassen – er wird nachträglich befüllt. Kein Markdown, keine Sternchen. Im Betreff KEIN "mit Schwerpunkt" verwenden.`
       : `Du bist ein Personalvermittler bei WeCruiting Consulting GmbH. Erstelle eine professionelle Kandidaten-Vorstellungs-E-Mail auf Deutsch.
 
 Kandidatendaten:
 ${cvSummary}
 
 Struktur der E-Mail (exakt einhalten):
-BETREFF: ${fullName} - Top Profil: [Hauptposition mit Spezialisierung] Standort ${cityRegion || standort}
+BETREFF: ${fullName} - Top Profil: [Hauptposition Spezialisierung] Standort ${cityRegion || standort}
 ---
 Sehr geehrte Damen und Herren,
 
-anbei finden Sie das Profil eines sehr interessanten <b>[Beschreibung der Position mit Spezialisierung und Standort]</b>
+anbei finden Sie das Profil eines top <b>[Position und Spezialisierung, z.B. "Bauleiter Hochbau"]</b> an den Standorten <b>[Standort/Region, z.B. "München / Augsburg"]</b>
 
 <b>Profildaten:</b>
 
@@ -272,27 +296,22 @@ anbei finden Sie das Profil eines sehr interessanten <b>[Beschreibung der Positi
 • [Abschlusstyp + Fachrichtung, Format: "Bachelor Bauingenieurwesen" oder "Master Maschinenbau" – KEIN "Abschluss im/in"]
 • [weitere Abschlüsse im gleichen Format, falls vorhanden]
 
-<b>Projekte:</b> [Beschreibung relevanter Projekte/Branchen aus der Berufserfahrung, Projektvolumina falls erkennbar]
+<b>Projekte:</b> [Ein einziger Satz im Format: "Schwerpunkt [Bereich], [weiterer Bereich] ([spezifische Projekttypen]); Projektvolumen bis X Mio.€" – falls Projektvolumen unbekannt: "Projektvolumen bis ___ Mio.€"]
 
 <b>Hauptaufgaben:</b>
 
-• [Hauptaufgabe 1 aus Berufserfahrung]
-• [weitere Aufgaben...]
+[[HAUPTAUFGABEN]]
 
 <b>EDV:</b> [Kenntnisse/Tools]
-
 <b>Standort:</b> [Stadt/Region]
-
 <b>Gehaltsvorstellung: ${gehaltsvorstellung}</b>
-
 <b>Kündigungsfrist: ${kuendigungsfrist}</b>
 
 Könnte der Kandidat für Sie von Interesse sein?
 Bei Interesse vereinbare ich sehr gerne ein Gespräch.
-
 Über Ihre Rückmeldung freue ich mich.
 
-Wichtig: Gib nur BETREFF-Zeile und E-Mail-Text aus, nichts anderes. Trenne sie mit "---". Behalte alle <b>-Tags exakt wie in der Struktur vorgegeben. Kein Markdown, keine Sternchen.`;
+Wichtig: Gib nur BETREFF-Zeile und E-Mail-Text aus, nichts anderes. Trenne sie mit "---". Den Platzhalter [[HAUPTAUFGABEN]] exakt so im Text stehen lassen – er wird nachträglich befüllt. Kein Markdown, keine Sternchen. Im Betreff KEIN "mit Schwerpunkt" verwenden.`;
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
@@ -322,12 +341,48 @@ Wichtig: Gib nur BETREFF-Zeile und E-Mail-Text aus, nichts anderes. Trenne sie m
       body = lines.slice(1).join('\n').trim();
     }
 
+    // Inject pre-formatted description in place of placeholder (AI never touches the content)
+    body = body.replace('[[HAUPTAUFGABEN]]', mainJobDescriptionEmail || '(keine Tätigkeitsbeschreibung vorhanden)');
+
+    // Strip "mit Schwerpunkt" from subject
+    subject = subject.replace(/\s*mit\s+Schwerpunkt\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+
+    // Enforce consistent section label formatting regardless of AI output
+    body = body.split('\n').map(line => {
+      const text = line.replace(/<[^>]+>/g, '').trim();
+      if (!text) return line;
+      if (text === 'Profildaten:')           return '<u><b>Profildaten:</b></u>';
+      if (text.startsWith('Berufserfahrung:')) return `<b>Berufserfahrung:</b>${text.slice('Berufserfahrung:'.length)}`;
+      if (text.startsWith('Ausbildung:'))    return `<b>Ausbildung:</b>${text.slice('Ausbildung:'.length)}`;
+      if (text.startsWith('Projekte:'))      return `<b>Projekte:</b>${text.slice('Projekte:'.length)}`;
+      if (text.startsWith('Hauptaufgaben:')) return `<b>Hauptaufgaben:</b>${text.slice('Hauptaufgaben:'.length)}`;
+      if (text.startsWith('EDV:'))           return `<b>EDV:</b>${text.slice('EDV:'.length)}`;
+      if (text.startsWith('Standort:'))      return `<b>Standort:</b>${text.slice('Standort:'.length)}`;
+      if (text.startsWith('Gehaltsvorstellung:')) return `<b>Gehaltsvorstellung:</b>${text.slice('Gehaltsvorstellung:'.length)}`;
+      if (text.startsWith('Kündigungsfrist:'))    return `<b>Kündigungsfrist:</b>${text.slice('Kündigungsfrist:'.length)}`;
+      // First-sentence: ensure position and location are separately bold
+      if (/anbei finden Sie das Profil/i.test(text)) {
+        const clean = line.replace(/<\/?b>/gi, '').replace(/<\/?strong>/gi, '');
+        // Match "eines top <position> an [den] Standort[en] <location>" — bold each part separately
+        const withSplit = clean.replace(
+          /(eines top\s+)(.+?)\s+(an (?:den? )?Standort(?:en)?\s+)(.+)/i,
+          (_, pre, pos, mid, loc) => `${pre}<b>${pos.trim()}</b> ${mid.trim()} <b>${loc.trim()}</b>`
+        );
+        // If split succeeded (contains bold), return it; else bold everything after "eines top/sehr interessanten"
+        if (withSplit.includes('<b>')) return withSplit;
+        return clean.replace(/(eines (?:sehr interessanten|top)\s+)(.+)/i,
+          (_, pre, desc) => `${pre}<b>${desc.trim()}</b>`);
+      }
+      return line;
+    }).join('\n');
+
     // Anon: Strip any "Name - " prefix Claude may have added despite instructions
     if (anon && subject.includes(' - Top Profil:')) {
       subject = subject.replace(/^.+? - (Top Profil:.*)$/i, '$1').trim();
     }
 
     console.log('[generateEmail] subject:', subject);
+    console.log('[generateEmail] body preview:\n', body.substring(0, 800));
     res.json({ subject, body });
   } catch (err) {
     console.error(err);

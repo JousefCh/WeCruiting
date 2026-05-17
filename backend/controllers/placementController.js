@@ -283,17 +283,10 @@ exports.instantlyCreateCampaign = async (req, res) => {
     console.error('[Instantly] addLeads:', err.message);
   }
 
-  // 5. Activate campaign
-  try {
-    await instantly.activateCampaign(campaign.id);
-  } catch (err) {
-    console.error('[Instantly] activateCampaign:', err.message);
-  }
-
   res.json({
     campaignId: campaign.id,
     campaignName: `WeCruiting – ${candidateName}`,
     added: leads.length,
-    message: `Kampagne "WeCruiting – ${candidateName}" erstellt mit ${leads.length} Leads gestartet.`,
+    message: `Kampagne "WeCruiting – ${candidateName}" erstellt mit ${leads.length} Leads – bitte in Instantly prüfen und freigeben.`,
   });
 };
